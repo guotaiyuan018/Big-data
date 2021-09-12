@@ -5,7 +5,7 @@
 *21728李佳謙*
 ###### tags: `學習歷程`
 ## 專題理念
-希望能透過本次課程內所學知識，了解生活中大數據的應用，解決實際生活中所遇到的難題，達到學以致用的目的。同時藉此機會研究網頁相關知識，了解HTML、CSS、JavaScrip的基本概念，以及物聯網的實際應用。
+希望能透過本次課程內所學知識，了解生活中大數據的應用，解決實際生活中所遇到的難題，達到學以致用的目的。同時藉此機會研究網頁相關知識，了解HTML、CSS、JavaScrip的基本概念，以及物聯網的實際應用，最後架設在樹梅派上，利用系統設置使其完全自動化，並藉此熟悉了解Linux系統上的操作模式。
 
 ## 研究原因
 起初在課堂上設計了Ubike站況的爬蟲程式
@@ -41,6 +41,13 @@ print(St3[0],'車輛數:',St3[1],'空位數',St3[2])
 
 藉由此次作業的實作中，逐漸了解爬蟲的原理與應用，並開始研究是否能藉由爬蟲與網頁內容交互，解決生活中遇到的麻煩。
 
+---
+
+## 研究目標
+由於我課後經常前去國家圖書館的自修室讀書，然而座位經常是一位難求，只能一下課就趕往現場預約，或是在線上進行預約，不過線上也經常一下就一掃而空，因此產生利用網路爬蟲製作自動預約程式的想法。
+
+在這次專題中希望能完成自動預約的**動態爬蟲系統**、並完成在Linux電腦(樹梅派)上的架設並使其定時開機運作、最後設置專屬Line Bot來通知預約詳細內容。
+
 ## 研究初期
 首先研究的是 **beautifulsoup**
 
@@ -48,17 +55,13 @@ beautifulsoup是一個解析HTML、XML的函式庫，可以讓開發者僅須撰
 
 不過beautifulsoup **只能處理解析文本**，無法模仿使用者動作與網頁內容產生互動，無法滿足我希望能學以致用加以解決生活遇到難題的初衷，因此接著研究另一個工具 -- **Selenium**
 
-Selenium 是一種應對動態網頁的爬蟲，能與網頁內容進行互動如： **點擊、滾動** 等動作，並根據撰寫腳本執行模擬用戶操作，十分適合我希望設計的專題。
+Selenium 是一種應對動態網頁的爬蟲，能與網頁內容進行互動如： **點擊、滾動、輸入** 等動作，並根據撰寫腳本執行模擬用戶操作，十分適合我希望設計的專題。
 
-## 研究目標
-由於我課後經常前去國家圖書館的自修室讀書，然而座位經常是一位難求，只能一下課就趕往現場預約，或是在線上進行預約，不過線上也經常一下就一掃而空，因此產生利用網路爬蟲製作自動預約程式的想法。
-
-在這次專題中希望能完成自動預約的**動態爬蟲系統**、並完成在Linux電腦(樹梅派)上的架設並使其定時開機運作、最後設置專屬Line Bot來通知預約詳細內容。
 
 ## 研究成果
 
 ### 程式編寫
-
+#### 環境設置
 ```
 #安裝selenium模組
 pip install selenium
@@ -68,7 +71,9 @@ pip install webdriver_manager
 pip install requests
 #安裝beautiful soup
 pip install beautifulsoup4
+
 ```
+### 程式本體
 ```
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
@@ -85,6 +90,7 @@ driver.get("https://sr.ncl.edu.tw/deskbook/booking/index.jsp")
 
 首先匯入所需函式庫並開啟網頁
 
+---
 ```
 #點擊登入
 time.sleep(1)
@@ -105,6 +111,7 @@ button.click()
 
 接著登入帳號，透過xpath、name與id尋找元素(element)，由於執行時CPU占用以及頻寬占用皆會提高，因此在執行每個步驟前皆須暫停以確保網頁已啟動完畢。
 
+---
 ```
 #選日
 time.sleep(1)
@@ -123,34 +130,53 @@ seat.click()
 再來透過id、xpath找尋自己所要預約的日期、位子
 由於這邊網頁架構是使用雙層table，單單id或xpath無法精確定位元素，因此先藉由id定位包含其元素的祖先元素，再進一步使用xpath定位我們所需的日期、座位元素。
 
+---
 ```
-#利用IFTTT串聯webhook發送Line訊息
-def notify ():
-   url = ('https://maker.ifttt.com/trigger/reservation_success/with/key/lZnyU2O9_0ZT9vU7aa_Oaqix3XIDejhQE9QS36N0281?value1=524 ')
-   r = requests.get(url) 
+#獲取預約資訊
+time.sleep(1)
+soup = BeautifulSoup(driver.page_source, 'html.parser')
+inf = []
+td_tags = soup.find_all('td')
+for tag in td_tags:
+      inf.append(tag.string)
+      
+name = inf[5].strip()
+date = inf[11].strip() + inf[13].strip()
+seat = inf[15].strip()
+```
+利用bs4爬取在預約成功後顯示的預約資訊畫面，並存成變數方便後面ifttt+line的回傳程式。
+
+---
+```
+#設置ifttt觸發
+url = ('https://maker.ifttt.com/trigger/reservation_success/with/key/'yourkey'?value1='+name+'&value2='+date+'&value3='+seat )
+r = requests.post(url)
+#程式關閉
+time.sleep(10)
+driver.close()
+time.sleep(2)
+sys.exit()
 ```
 ![](https://i.imgur.com/8fdemuv.png)
+![](https://i.imgur.com/tnIi0aE.jpg)
 
-![](https://i.imgur.com/fZJIi2D.jpg)
+
 
 IFTTT 是一個網路服務平台，可以將不同的App、連網裝置和軟體服務整合在一起，然後讓支援IFTTT 的某服務（或App、連網裝置）去觸發另一個服務（或App、連網裝置）。
-目標藉由webhooks觸發，使用Line來傳送成功預約訊息，以及預約內容如：座位、時間等資訊
+此設計專案目標藉由程式碼觸發webhooks預設的執行條件，再使用Line來傳送成功預約訊息，預約內容包含：座位、時間等資訊，除了讓預約者能確認自己的預約資訊，同時也能確認預約程序是否成功。
+
+---
 
 ### 樹梅派設置
-由於手上沒有適合樹梅派的小一些的螢幕，因此用SSH搭配VNC遠端操縱。
+#### SSH+VNC
+由於手上沒有適合樹梅派的螢幕，因此用SSH搭配VNC遠端操縱，大多時間透過ssh的終端機來設置系統或是程式內容，僅少部分時間透過vnc來觀察程式執行情況。
 ![](https://i.imgur.com/jNeju3x.png)
 ![](https://i.imgur.com/SZvvnvo.png)
 
-在樹梅派上有些設置與一般linux電腦上的指令不同，這邊多加註記
-
-```
-# 安裝 Selenium 模組
-pip3 install selenium
-# 安裝 webdriver-manager
-pip3 install webdriver-manager
-```
-
-
+---
+#### Crontab
+![](https://i.imgur.com/U7k3p01.png)
+為了讓程式在電腦上自動執行，這次使用linux內建的cronlab來設置排程，其中設置一個排程於每日早上00:01時執行預約程式，以及00:30時重新啟動讓電腦重新啟動，避免長時間運行讓電腦內存占用過度而拖慢運行速度。
 
 ## 遭遇問題
 
@@ -166,11 +192,7 @@ table = tb.find_element_by_xpath('.//table/tbody/tr[1]/td/table/tbody/tr[7]/td[4
 正確程式
 ```
 
-就因為一個小小一點就導致整串程式碼無法執行，寫程式真的是一件不可馬虎的事！
-
-
----
-
+就因為一個小小一點就導致整串程式碼無法執行，可見寫程式真是一件也不可馬虎。
 
 ### Covid-19
 ![](https://i.imgur.com/tgvRF6C.png)
@@ -178,13 +200,13 @@ table = tb.find_element_by_xpath('.//table/tbody/tr[1]/td/table/tbody/tr[7]/td[4
 
 **7/27起隨北市防疫政策降級，預約系統即日隨自修室開放**
 
----
-
 ### 網頁結構
-由於一開始對於網頁設計
+由於一開始對於網頁以及結構設計不了解，因此初期透過[MDN Web Docs
+](https://developer.mozilla.org/zh-TW/docs/Learn/Getting_started_with_the_web)這個網站對**HTML、CSS、Javascript**這些語言有初步的認識，並自己動手設計一些網站後才逐漸累積網頁相關資訊，使足以應付所要解析爬取定位的網頁。
 
+---
 ## 心得感想
+經過此次專題實作，除了網頁架構的相關知識了解，以及IFTTT設計操作外，還有linux相關的知識學習了解。此外更深刻的是學以致用的概念 -- 利用課堂中學習的知識，以及自己努力查找的資料，用以來解決生活中所遇到的難題，培養自己應對問題的能力。此次專案歷時許久，許多疑難雜症多謝師長以及親朋好友的指導以及討論，也同時感謝網路上的各路大神提供無數知識以及疑問破解，讓我能更順利的完成這次專案。
 
-經過此次專題實作，除了網頁架構的相關知識了解，以及IFTTT設計操作外，還有善用外文資料來解決bug。更深刻的是學以致用的概念 -- 利用課堂中學習的知識，以及自己查找所得的資料，來解決生活中所遇到的難題，培養自己應對的能力。 
-
+感謝黃敦紀老師指導，感謝鼎中老師出借樹梅派電腦。
 
